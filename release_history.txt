@@ -1,3 +1,10 @@
+— 2026-05-24 v0.0.15 test release 3 w back sync
+    main.go | 1 insertion, 1 deletion
+    pia-wireguard-cfg.exe | added
+
+— 2026-05-23 Update release_history.txt for v0.0.14
+    release_history.txt | 70 insertions, 0 deletions
+
 — 2026-05-24 v0.0.14 testing release tagging
     main.go | 1 insertion, 1 deletion
     pia-wireguard-cfg.exe | added
