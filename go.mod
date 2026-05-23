@@ -1,4 +1,4 @@
-module pia-wg-config
+module pia-wireguard-cfg
 
 go 1.25.0
 

@@ -1,10 +1,10 @@
-# pia-wg-config
+# pia-wireguard-cfg
 
 A lightweight command-line tool written in Go that generates a ready-to-use WireGuard configuration file for the Private Internet Access (PIA) VPN service. It authenticates with PIA's official provisioning API, selects the lowest-latency server in your chosen region, generates a fresh WireGuard keypair, and writes a complete `.conf` file directly to your Windows desktop.
 
 ## Why use this?
 
-Manually creating a PIA WireGuard configuration requires authenticating against multiple APIs, parsing server lists, performing key exchange, and assembling the config by hand. **pia-wg-config** automates the entire process end-to-end in a single command.
+Manually creating a PIA WireGuard configuration requires authenticating against multiple APIs, parsing server lists, performing key exchange, and assembling the config by hand. **pia-wireguard-cfg** automates the entire process end-to-end in a single command.
 
 - **No manual API calls:** the full PIA WireGuard provisioning flow is handled automatically
 - **Fresh keypair every run:** a new WireGuard keypair is cryptographically generated each time
@@ -31,18 +31,18 @@ Manually creating a PIA WireGuard configuration requires authenticating against 
 ## Installation
 
 ```
-git clone https://github.com/ExponentiallyDigital/pia-wg-config.git
-cd pia-wg-config
+git clone https://github.com/ExponentiallyDigital/pia-wireguard-cfg.git
+cd pia-wireguard-cfg
 go mod tidy
-go build -o pia-wg-config.exe
+go build -o pia-wireguard-cfg.exe
 ```
 
-The compiled `pia-wg-config.exe` can be placed anywhere on your system. No installer is required.
+The compiled `pia-wireguard-cfg.exe` can be placed anywhere on your system. No installer is required.
 
 ## Usage
 
 ```
-pia-wg-config.exe [-username PIA_username] [-region region_id] [-list-regions]
+pia-wireguard-cfg.exe [-username PIA_username] [-region region_id] [-list-regions]
                   [-dns "dns_servers"] [-verbose] [-help] [-?]
 ```
 
@@ -64,37 +64,37 @@ With no arguments, you will be prompted interactively for the region, username, 
 Generate a config for Melbourne, Australia, prompting for all credentials:
 
 ```
-pia-wg-config.exe -region aus_melbourne
+pia-wireguard-cfg.exe -region aus_melbourne
 ```
 
 Supply username on the command line (password is always prompted):
 
 ```
-pia-wg-config.exe -username p1234567 -region aus_melbourne
+pia-wireguard-cfg.exe -username p1234567 -region aus_melbourne
 ```
 
 Use a different region:
 
 ```
-pia-wg-config.exe -username p1234567 -region us_new_york_city
+pia-wireguard-cfg.exe -username p1234567 -region us_new_york_city
 ```
 
 Use Cloudflare DNS instead of the default Quad9:
 
 ```
-pia-wg-config.exe -username p1234567 -region aus_melbourne -dns "1.1.1.1, 1.0.0.1"
+pia-wireguard-cfg.exe -username p1234567 -region aus_melbourne -dns "1.1.1.1, 1.0.0.1"
 ```
 
 Use Google DNS with verbose output for troubleshooting:
 
 ```
-pia-wg-config.exe -username p1234567 -region aus_melbourne -dns "8.8.8.8, 8.8.4.4" -verbose
+pia-wireguard-cfg.exe -username p1234567 -region aus_melbourne -dns "8.8.8.8, 8.8.4.4" -verbose
 ```
 
 Browse all available PIA regions before choosing one:
 
 ```
-pia-wg-config.exe -list-regions
+pia-wireguard-cfg.exe -list-regions
 ```
 
 ## DNS options
@@ -179,7 +179,7 @@ Contributions are welcome. To contribute:
 ## Bugs and feature requests
 
 Found a bug or want to request a feature?
-[Open an issue here](https://github.com/ExponentiallyDigital/pia-wg-config/issues)
+[Open an issue here](https://github.com/ExponentiallyDigital/pia-wireguard-cfg/issues)
 
 ## Support
 

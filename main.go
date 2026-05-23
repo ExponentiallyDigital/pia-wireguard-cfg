@@ -1,5 +1,5 @@
 // *************************************************************************************************
-// pia-wg-config
+// pia-wireguard-cfg
 //
 //  Purpose: Generates a WireGuard configuration file for Private Internet Access (PIA) VPN.
 //           Authenticates with PIA, selects the lowest-latency server in the specified region,
@@ -7,9 +7,9 @@
 //
 // To initialize, tidy, build, and run this Go app:
 //
-//    go mod init pia-wg-config
+//    go mod init pia-wireguard-cfg
 //    go mod tidy
-//    go build -o pia-wg-config.exe
+//    go build -o pia-wireguard-cfg.exe
 //
 // *************************************************************************************************
 // Copyright (C) 2025 Andrew Newbury
@@ -385,15 +385,15 @@ func registerWGKey(ctx context.Context, server *wgServer, token, pubkey string) 
 
 func printHelp() {
 	os.Stdout.WriteString(`
-pia-wg-config v0.0.7
+pia-wireguard-cfg v0.0.7
 Generates a WireGuard configuration file for Private Internet Access (PIA) VPN.
 Authenticates with PIA, selects the lowest-latency server in the specified region,
 generates a WireGuard keypair, and writes a ready-to-use .conf file to your desktop.
 
 Usage:
 
-  pia-wg-config.exe [-username PIA_username] [-region region_id] [-list-regions]
-                    [-dns "dns_servers"] [-verbose] [-help] [-?]
+  pia-wireguard-cfg.exe [-username PIA_username] [-region region_id] [-list-regions]
+                        [-dns "dns_servers"] [-verbose] [-help] [-?]
 
 Parameters:
   -username      PIA account username (e.g., p1234567). If omitted you will be prompted interactively.
@@ -407,12 +407,12 @@ Parameters:
   /help, /?      Show this help message.
 
 Examples:
-  pia-wg-config.exe -username p1234567
-  pia-wg-config.exe -username p1234567 -region aus_melbourne
-  pia-wg-config.exe -username p1234567 -region us_new_york_city -dns "1.1.1.1, 1.0.0.1"
-  pia-wg-config.exe -username p1234567 -dns "8.8.8.8, 8.8.4.4" -verbose
-  pia-wg-config.exe -list-regions
-  pia-wg-config.exe -help
+  pia-wireguard-cfg.exe -username p1234567
+  pia-wireguard-cfg.exe -username p1234567 -region aus_melbourne
+  pia-wireguard-cfg.exe -username p1234567 -region us_new_york_city -dns "1.1.1.1, 1.0.0.1"
+  pia-wireguard-cfg.exe -username p1234567 -dns "8.8.8.8, 8.8.4.4" -verbose
+  pia-wireguard-cfg.exe -list-regions
+  pia-wireguard-cfg.exe -help
 
 Output:
   WireGuard config file is written to %USERPROFILE%\Desktop\pia-region_name.conf

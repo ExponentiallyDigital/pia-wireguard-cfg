@@ -1,4 +1,4 @@
-Build a command-line Go app (Go 1.21 or later) as a single `main.go` with module name `pia-wg-config` that generates a WireGuard config file for PIA VPN using their official provisioning API flow (reference: github.com/pia-foss/manual-connections).
+Build a command-line Go app (Go 1.21 or later) as a single `main.go` with module name `pia-wireguard-cfg` that generates a WireGuard config file for PIA VPN using their official provisioning API flow (reference: github.com/pia-foss/manual-connections).
 
 Include a comment block at the top of `main.go` with the exact commands to initialise the module, run `go mod tidy`, and build the app. Also output the complete `go.mod` with `go 1.21` and all required dependencies so the project builds with a single `go mod tidy`.
 
@@ -43,9 +43,7 @@ The app must accept the following flags:
     {
       "id": "aus_melbourne",
       "servers": {
-        "wg": [
-          { "ip": "x.x.x.x", "cn": "melbourne401.privacy.network" }
-        ]
+        "wg": [{ "ip": "x.x.x.x", "cn": "melbourne401.privacy.network" }]
       }
     }
   ]
@@ -141,7 +139,7 @@ AllowedIPs = 0.0.0.0/0
 
 Implement a `printHelp()` function that writes a detailed help block to stdout using `os.Stdout.WriteString(...)` (not `fmt.Print` or `fmt.Fprint` — these trigger a go vet warning on the `%USERPROFILE%` path string). The help block must include:
 
-- A version line (`pia-wg-config v1.0.0`) and one-line description.
+- A version line (`pia-wireguard-cfg v1.0.0`) and one-line description.
 - Full usage line showing all flags.
 - A parameters table describing every flag including defaults and examples.
 - At least three usage examples showing different flag combinations.
@@ -161,4 +159,4 @@ Implement a `printHelp()` function that writes a detailed help block to stdout u
 
 ---
 
-*This prompt was developed iteratively by Claude Sonnet 4.6 in collaboration with the author.*
+_This prompt was developed iteratively by Claude Sonnet 4.6 in collaboration with the author._
