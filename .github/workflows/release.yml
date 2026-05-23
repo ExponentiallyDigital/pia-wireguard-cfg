@@ -28,7 +28,7 @@ jobs:
         run: |
           ADDON="${{ github.event.repository.name }}"
           mkdir -p build/$ADDON
-          cp -R . build/$ADDON/
+          cp -R ./* build/$ADDON/
 
       - name: Install Pandoc
         run: sudo apt-get update && sudo apt-get install -y pandoc
