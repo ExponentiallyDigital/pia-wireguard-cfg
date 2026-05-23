@@ -28,12 +28,10 @@ jobs:
         run: |
           ADDON="${{ github.event.repository.name }}"
           mkdir -p build/$ADDON
-          cp LICENSE build/$ADDON/ || true
-          cp *.exe build/$ADDON/ || true
-          cp *.html build/$ADDON/ || true
-          cp *.md build/$ADDON/ || true
-          cp go.* build/$ADDON/ || true
-          cp *.go build/$ADDON/ || true
+          cp LICENSE build/$ADDON/
+          cp pia-wireguard-cfg.exe build/$ADDON/
+          cp README.md build/$ADDON/
+          cp README.html build/$ADDON/ || true
 
       - name: Install Pandoc
         run: sudo apt-get update && sudo apt-get install -y pandoc
