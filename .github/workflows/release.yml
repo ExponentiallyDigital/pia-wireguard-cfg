@@ -27,7 +27,7 @@ jobs:
       - name: Create addon directory
         run: |
           ADDON="${{ github.event.repository.name }}"
-
+          mkdir -p build/$ADDON
           cp * build/$ADDON/
 
       - name: Install Pandoc
