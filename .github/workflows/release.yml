@@ -81,15 +81,14 @@ jobs:
         run: |
           # Only checkout if not a tag (push on tag means diff ref)
           REF=${GITHUB_REF}
-            git stash --include-untracked
-            if [[ "$REF" == refs/tags/* ]]; then
-              BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
-              git checkout "$BRANCH"
-            else
-              BRANCH="${GITHUB_REF#refs/heads/}"
-              git checkout "$BRANCH"
-            fi
-            git stash pop || true
+          if [[ "$REF" == refs/tags/* ]]; then
+            # For tag pushes, find the default branch and checkout
+            BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+            git checkout "$BRANCH"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            git checkout "$BRANCH"
+          fi
 
       - name: Commit updated release_history.txt to repo root
         if: ${{ github.event.inputs.dry_run != 'true' }}
