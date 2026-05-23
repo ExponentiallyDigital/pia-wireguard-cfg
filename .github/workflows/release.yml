@@ -76,21 +76,10 @@ jobs:
               }
             ' > release_history.txt
 
-      - name: Switch to current branch
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: |
-          # Only checkout if not a tag (push on tag means diff ref)
-          REF=${GITHUB_REF}
-          if [[ "$REF" == refs/tags/* ]]; then
-            # For tag pushes, find the default branch and checkout
-            BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
-            git checkout "$BRANCH"
-          else
-            BRANCH="${GITHUB_REF#refs/heads/}"
-            git checkout "$BRANCH"
-          fi
-
-      - name: Commit updated release_history.txt to repo root
+      # ---------------------------------------------------------
+      # FIX: Commit release_history.txt BEFORE switching branches
+      # ---------------------------------------------------------
+      - name: Commit updated release_history.txt
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           git config user.name "github-actions"
@@ -100,10 +89,28 @@ jobs:
 
           if ! git diff --cached --quiet; then
             git commit -m "Update release_history.txt for ${{ github.ref_name }}"
-            git push
           else
             echo "No changes to commit."
           fi
+
+      # ---------------------------------------------------------
+      # Now it is safe to switch branches
+      # ---------------------------------------------------------
+      - name: Switch to current branch
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          REF=${GITHUB_REF}
+          if [[ "$REF" == refs/tags/* ]]; then
+            BRANCH=$(git remote show origin | awk '/HEAD branch/ {print $NF}')
+            git checkout "$BRANCH"
+          else
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            git checkout "$BRANCH"
+          fi
+
+      - name: Push commit
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: git push
 
       - name: Create ZIP
         run: |
