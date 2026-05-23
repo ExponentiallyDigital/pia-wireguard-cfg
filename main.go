@@ -385,7 +385,7 @@ func registerWGKey(ctx context.Context, server *wgServer, token, pubkey string) 
 
 func printHelp() {
 	os.Stdout.WriteString(`
-pia-wireguard-cfg v0.2.3
+pia-wireguard-cfg v0.2.4
 Generates a WireGuard configuration file for Private Internet Access (PIA) VPN.
 Authenticates with PIA, selects the lowest-latency server in the specified region,
 generates a WireGuard keypair, and writes a ready-to-use .conf file to your desktop.

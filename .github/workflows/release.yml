@@ -1,4 +1,4 @@
-name: Package Addon ${{ github.ref_name != '' && startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Package Addon' }}
+name: Package Addon
 
 on:
   push:
