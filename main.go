@@ -5,11 +5,26 @@
 //           Authenticates with PIA, selects the lowest-latency server in the specified region,
 //           generates a WireGuard keypair, and writes a ready-to-use .conf file to your desktop.
 //
-// To initialize, tidy, build, and run this Go app:
+// To initialize and tidy dependencies (run once):
 //
 //    go mod init pia-wireguard-cfg
 //    go mod tidy
-//    go build -o pia-wireguard-cfg.exe
+//
+// To build both Windows and Linux (ARM64) binaries, run build.bat:
+//
+//    build.bat
+//
+// This produces:
+//    pia-wireguard-cfg.exe   -- Windows binary
+//    pia-wireguard-cfg       -- Linux/Android binary
+//
+// To run on Android via Termux, transfer pia-wireguard-cfg-linux-arm64 to the device,
+// then in Termux run:
+//    chmod +x pia-wireguard-cfg
+// Run the binary from within the Termux home directory (~/) to ensure the output
+// .conf file is written to an accessible location.
+// On Android Termux, you make need to install the CA certificates package bundle with
+//    pkg install ca-certificates
 //
 // *************************************************************************************************
 // Copyright (C) 2025 Andrew Newbury
@@ -47,12 +62,15 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/curve25519"
 )
+
+const programVersion = "1.0.8"
 
 type wgServer struct {
     IP string `json:"ip"`
@@ -94,7 +112,15 @@ func main() {
 
     // Fetch server list
     serverListURL := "https://serverlist.piaservers.net/vpninfo/servers/v6"
-    httpClient := &http.Client{Timeout: 10 * time.Second}
+    httpClient := &http.Client{
+        Timeout: 10 * time.Second,
+        Transport: &http.Transport{
+            DialContext: newDialer().DialContext,
+            TLSClientConfig: &tls.Config{
+                RootCAs: buildSystemCertPool(),
+            },
+        },
+    }
     resp, err := httpClient.Get(serverListURL)
     if err != nil {
         fmt.Fprintf(os.Stderr, "Failed to fetch server list: %v\n", err)
@@ -193,7 +219,7 @@ func main() {
     var bestServer *wgServer
     for i, s := range melRegion.Servers.WG {
         start := time.Now()
-        conn, err := net.DialTimeout("tcp", net.JoinHostPort(s.IP, "1337"), 2*time.Second)
+        conn, err := newDialer().DialContext(context.Background(), "tcp", net.JoinHostPort(s.IP, "1337"))
         latency := time.Since(start)
         if err == nil {
             conn.Close()
@@ -255,12 +281,11 @@ func main() {
     }
     peerIP += "/32"
 
-    userProfile := os.Getenv("USERPROFILE")
-    if userProfile == "" {
-        fmt.Fprintln(os.Stderr, "USERPROFILE environment variable is not set")
+    confPath, err := resolveOutputPath(regionFlag)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Failed to resolve output path: %v\n", err)
         os.Exit(1)
     }
-	confPath := filepath.Join(userProfile, "Desktop", "pia-"+regionFlag+".conf")
     if _, err := os.Stat(confPath); err == nil {
         fmt.Printf("Overwrite existing file? [y/N]: ")
         ans, _ := reader.ReadString('\n')
@@ -280,13 +305,95 @@ func main() {
     fmt.Printf("WireGuard config written to %s\n", confPath)
 }
 
+func buildSystemCertPool() *x509.CertPool {
+    pool, err := x509.SystemCertPool()
+    if err != nil || pool == nil {
+        pool = x509.NewCertPool()
+    }
+    if runtime.GOOS == "linux" {
+        // Standard Linux CA bundle locations plus hardcoded Termux path --
+        // do not rely on $PREFIX env var as it is not reliably inherited by child processes
+        bundleFiles := []string{
+            "/etc/ssl/certs/ca-certificates.crt",
+            "/etc/pki/tls/certs/ca-bundle.crt",
+            "/etc/ssl/ca-bundle.pem",
+            "/etc/ssl/certs/ca-bundle.crt",
+            "/data/data/com.termux/files/usr/etc/tls/cert.pem",
+        }
+        // Also try PREFIX if it happens to be set
+        if prefix := os.Getenv("PREFIX"); prefix != "" {
+            bundleFiles = append(bundleFiles,
+                filepath.Join(prefix, "etc/tls/cert.pem"),
+                filepath.Join(prefix, "etc/ca-certificates/ca-certificates.crt"),
+            )
+        }
+        for _, f := range bundleFiles {
+            if certBytes, err := os.ReadFile(f); err == nil {
+                pool.AppendCertsFromPEM(certBytes)
+            }
+        }
+        // Android system CA directory (individual cert files)
+        androidCADir := "/system/etc/security/cacerts"
+        if entries, err := os.ReadDir(androidCADir); err == nil {
+            for _, entry := range entries {
+                if entry.IsDir() {
+                    continue
+                }
+                if certBytes, err := os.ReadFile(filepath.Join(androidCADir, entry.Name())); err == nil {
+                    pool.AppendCertsFromPEM(certBytes)
+                }
+            }
+        }
+    }
+    return pool
+}
+
+func newDialer() *net.Dialer {
+    return &net.Dialer{
+        Timeout: 10 * time.Second,
+        Resolver: &net.Resolver{
+            PreferGo: true,
+            Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+                d := net.Dialer{Timeout: 5 * time.Second}
+                return d.DialContext(ctx, "udp", "8.8.8.8:53")
+            },
+        },
+    }
+}
+
+func resolveOutputPath(regionFlag string) (string, error) {
+    filename := "pia-" + regionFlag + ".conf"
+    switch runtime.GOOS {
+    case "windows":
+        userProfile := os.Getenv("USERPROFILE")
+        if userProfile == "" {
+            return "", errors.New("USERPROFILE environment variable is not set")
+        }
+        return filepath.Join(userProfile, "Desktop", filename), nil
+    default:
+        cwd, err := os.Getwd()
+        if err != nil {
+            return "", fmt.Errorf("failed to determine current working directory: %w", err)
+        }
+        return filepath.Join(cwd, filename), nil
+    }
+}
+
 func getPIAToken(ctx context.Context, username, password string) (string, error) {
     req, err := http.NewRequestWithContext(ctx, "POST", "https://www.privateinternetaccess.com/gtoken/generateToken", nil)
     if err != nil {
         return "", fmt.Errorf("creating request: %w", err)
     }
     req.SetBasicAuth(username, password)
-    httpClient := &http.Client{Timeout: 10 * time.Second}
+    httpClient := &http.Client{
+        Timeout: 10 * time.Second,
+        Transport: &http.Transport{
+            DialContext: newDialer().DialContext,
+            TLSClientConfig: &tls.Config{
+                RootCAs: buildSystemCertPool(),
+            },
+        },
+    }
     resp, err := httpClient.Do(req)
     if err != nil {
         return "", fmt.Errorf("token request failed: %w", err)
@@ -336,7 +443,16 @@ type regResponse struct {
 }
 
 func registerWGKey(ctx context.Context, server *wgServer, token, pubkey string) (regResponse, string, error) {
-	caCertResp, err := http.Get("https://raw.githubusercontent.com/pia-foss/manual-connections/master/ca.rsa.4096.crt")
+    caCertClient := &http.Client{
+        Timeout: 10 * time.Second,
+        Transport: &http.Transport{
+            DialContext: newDialer().DialContext,
+            TLSClientConfig: &tls.Config{
+                RootCAs: buildSystemCertPool(),
+            },
+        },
+    }
+    caCertResp, err := caCertClient.Get("https://raw.githubusercontent.com/pia-foss/manual-connections/master/ca.rsa.4096.crt")
 	if err != nil {
 		return regResponse{}, "", fmt.Errorf("failed to fetch PIA CA certificate: %w", err)
 	}
@@ -357,6 +473,7 @@ func registerWGKey(ctx context.Context, server *wgServer, token, pubkey string) 
         Timeout: 10 * time.Second,
         Transport: &http.Transport{
             TLSClientConfig: tlsConfig,
+            DialContext:     newDialer().DialContext,
         },
     }
     urlStr := fmt.Sprintf("https://%s:1337/addKey?pt=%s&pubkey=%s", server.IP, url.QueryEscape(token), url.QueryEscape(pubkey))
@@ -384,8 +501,7 @@ func registerWGKey(ctx context.Context, server *wgServer, token, pubkey string) 
 }
 
 func printHelp() {
-	os.Stdout.WriteString(`
-pia-wireguard-cfg v0.3.2
+    os.Stdout.WriteString("\npia-wireguard-cfg v" + programVersion + `
 Generates a WireGuard configuration file for Private Internet Access (PIA) VPN.
 Authenticates with PIA, selects the lowest-latency server in the specified region,
 generates a WireGuard keypair, and writes a ready-to-use .conf file to your desktop.
@@ -415,9 +531,17 @@ Examples:
   pia-wireguard-cfg.exe -help
 
 Output:
-  WireGuard config file is written to %USERPROFILE%\Desktop\pia-region_name.conf
-  Where "region_name" is the name of the chosen region.
+  Windows:       %USERPROFILE%\Desktop\pia-<region>.conf
+  Linux/Android: <current working directory>/pia-<region>.conf
+
+  Where <region> is the name of the chosen region (e.g. pia-aus_melbourne.conf).
   If the file already exists you will be prompted before it is overwritten.
+
+Android/Termux:
+  After transferring the Linux binary to your device, run:
+    chmod +x pia-wireguard-cfg-linux-arm64
+  before executing it. Run from within the Termux home directory (~/) to ensure
+  the output .conf file is written to an accessible location.
 
 Authentication:
   You will always be prompted interactively for your PIA password.
@@ -427,7 +551,7 @@ Authentication:
 DNS defaults:
   9.9.9.9          Quad9 primary
   149.112.112.112  Quad9 secondary
- 
+
   Alternative well-known DNS servers:
     Cloudflare:  1.1.1.1, 1.0.0.1
     Google:      8.8.8.8, 8.8.4.4

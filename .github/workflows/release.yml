@@ -30,6 +30,7 @@ jobs:
           mkdir -p build/$ADDON
           cp LICENSE build/$ADDON/
           cp pia-wireguard-cfg.exe build/$ADDON/
+          cp pia-wireguard-cfg build/$ADDON/
           cp README.md build/$ADDON/
           cp README.html build/$ADDON/ || true
 

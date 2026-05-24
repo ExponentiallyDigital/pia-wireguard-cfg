@@ -1,6 +1,6 @@
 # pia-wireguard-cfg
 
-A lightweight command-line tool written in Go that generates a ready-to-use WireGuard configuration file for the Private Internet Access (PIA) VPN service. It authenticates with PIA's official provisioning API, selects the lowest-latency server in your chosen region, generates a fresh WireGuard keypair, and writes a complete `.conf` file directly to your Windows desktop.
+A lightweight command-line tool written in Go that generates a ready-to-use WireGuard configuration file for the Private Internet Access (PIA) VPN service. It authenticates with PIA's official provisioning API, selects the lowest-latency server in your chosen region, generates a fresh WireGuard keypair, and writes a complete `.conf` file to your Windows desktop or current directory on Android.
 
 ## Why use this?
 
@@ -9,41 +9,68 @@ Manually creating a PIA WireGuard configuration requires authenticating against 
 - **No manual API calls:** the full PIA WireGuard provisioning flow is handled automatically
 - **Fresh keypair every run:** a new WireGuard keypair is cryptographically generated each time
 - **Lowest-latency server selection:** TCP latency is measured against all available servers in the region before connecting
-- **Router-compatible output:** config files are written with Unix line endings as required by most WireGuard router implementations
+- **Router and Android compatible:** config files are written with Unix line endings as required by WireGuard
 - **No credentials stored:** your PIA password is entered interactively and never written to disk
+- **Cross-platform:** runs on Windows 11 and Android (via Termux)
 
 ## Features
 
 - **Automatic server selection:** measures TCP latency to all WireGuard servers in the chosen region and selects the fastest one
-- **Full region support:** works with any PIA region, not just a hardcoded location -- use `-list-regions` to browse all options
+- **Full region support:** works with any PIA region -- use `-list-regions` to display all options
 - **Interactive or flag-driven:** supply username and region via command-line flags or be prompted interactively for each
 - **Configurable DNS:** use any DNS servers you choose, with Quad9 as the default
 - **Verbose diagnostic mode:** optionally prints server IP, CN, measured latency, and raw PIA registration response for troubleshooting
 - **Safe overwrite handling:** prompts before overwriting an existing config file
-- **Single binary:** compiles to a single `.exe` with no runtime dependencies
+- **Single binary:** compiles to a single executable with no runtime dependencies
+- **Android/Termux support:** works on ARM64 Android devices with correct DNS and TLS handling for the Android environment
 
 ## Requirements
 
-- Go 1.21 or later
-- Windows 11 (output path uses `%USERPROFILE%\Desktop`)
+- Go 1.21 or later (for building)
+- Windows 11 or Android (via Termux) for running
 - A valid Private Internet Access account with an active subscription
+- Android only: `pkg install ca-certificates` in Termux
 
 ## Installation
+
+Clone the repository and build both binaries using the included build script:
 
 ```
 git clone https://github.com/ExponentiallyDigital/pia-wireguard-cfg.git
 cd pia-wireguard-cfg
 go mod tidy
-go build -o pia-wireguard-cfg.exe
+build.bat
 ```
 
-The compiled `pia-wireguard-cfg.exe` can be placed anywhere on your system. No installer is required.
+This produces:
+
+- `pia-wireguard-cfg.exe` -- Windows binary
+- `pia-wireguard-cfg` -- Linux/Android ARM64 binary
+
+Both binaries can be placed anywhere on your system. No installer is required.
+
+## Android/Termux setup
+
+1. Install Termux from [F-Droid](https://f-droid.org/packages/com.termux/) (not the Play Store version)
+2. In Termux, install CA certificates: `pkg install ca-certificates`
+3. Transfer `pia-wireguard-cfg` to your device (via USB, `scp`, or any file manager)
+4. In Termux, make it executable: `chmod +x pia-wireguard-cfg`
+5. Run it from your Termux home directory (`~/`) so the output file is written to an accessible location
 
 ## Usage
 
+**Windows:**
+
 ```
 pia-wireguard-cfg.exe [-username PIA_username] [-region region_id] [-list-regions]
-                  [-dns "dns_servers"] [-verbose] [-help] [-?]
+                      [-dns "dns_servers"] [-verbose] [-help] [-?]
+```
+
+**Android/Termux:**
+
+```
+./pia-wireguard-cfg [-username PIA_username] [-region region_id] [-list-regions]
+                    [-dns "dns_servers"] [-verbose] [-help]
 ```
 
 With no arguments, you will be prompted interactively for the region, username, and password.
@@ -91,7 +118,7 @@ Use Google DNS with verbose output for troubleshooting:
 pia-wireguard-cfg.exe -username p1234567 -region aus_melbourne -dns "8.8.8.8, 8.8.4.4" -verbose
 ```
 
-Browse all available PIA regions before choosing one:
+Display all available PIA regions before choosing one:
 
 ```
 pia-wireguard-cfg.exe -list-regions
@@ -117,13 +144,14 @@ Pass multiple servers as a quoted comma-separated string: `-dns "1.1.1.1, 1.0.0.
 
 ## Output
 
-The generated config file is written to:
+The generated config file is written to a platform-specific location:
 
-```
-%USERPROFILE%\Desktop\pia-<region_name>.conf
-```
+| Platform       | Output path                                     |
+| -------------- | ----------------------------------------------- |
+| Windows        | `%USERPROFILE%\Desktop\pia-<region>.conf`       |
+| Android/Termux | `<current working directory>/pia-<region>.conf` |
 
-For example, selecting region `aus_melbourne` produces `pia-aus_melbourne.conf` on your desktop. If a file with that name already exists, you will be prompted before it is overwritten.
+For example, selecting region `aus_melbourne` produces `pia-aus_melbourne.conf`. If a file with that name already exists, you will be prompted before it is overwritten.
 
 The config file follows this structure, with all dynamic fields populated from the PIA registration response:
 
@@ -145,7 +173,7 @@ AllowedIPs          = 0.0.0.0/0
 
 - Your PIA password is **always** entered interactively at runtime and is **never** stored, logged, or written to disk
 - Credentials are used solely to obtain a short-lived PIA authentication token for the WireGuard key registration step
-- The WireGuard private key is written only to the output `.conf` file on your desktop -- treat this file as a secret
+- The WireGuard private key is written only to the output `.conf` file -- treat this file as a secret
 
 ## How it works
 
@@ -153,18 +181,22 @@ AllowedIPs          = 0.0.0.0/0
 2. Filters servers to the chosen region and measures TCP latency to port 1337 on each candidate
 3. Authenticates against the PIA token API using your credentials to obtain a short-lived token
 4. Generates a fresh WireGuard keypair using `golang.org/x/crypto/curve25519` with correct RFC 7748 scalar clamping
-5. Registers the generated public key with the lowest-latency server via its local HTTPS API (port 1337), using PIA's own CA certificate for TLS verification
-6. Assembles the complete WireGuard config from the registration response and writes it to your desktop
+5. Fetches PIA's CA certificate dynamically from the PIA manual-connections repository (always current, never hardcoded)
+6. Registers the generated public key with the lowest-latency server via its local HTTPS API (port 1337), using PIA's own CA certificate for TLS verification
+7. Assembles the complete WireGuard config from the registration response and writes it to the output path
 
 This follows the same provisioning flow as PIA's official open-source manual connection scripts at [github.com/pia-foss/manual-connections](https://github.com/pia-foss/manual-connections).
 
 ## Technical details
 
 - **Key generation:** uses `golang.org/x/crypto/curve25519` directly; no dependency on the `wg` binary or kernel WireGuard modules
-- **TLS:** the port 1337 registration API uses HTTPS with PIA's own CA certificate, fetched from the PIA manual-connections repository and used to build a custom TLS root pool at runtime
-- **Server name verification:** `tls.Config.ServerName` is set to the server's `cn` field from the PIA server list, as the certificate is issued to the hostname rather than the IP address
-- **Line endings:** the output config file always uses Unix line endings (`\n`) regardless of the host OS, as required by WireGuard router implementations
+- **PIA CA certificate:** fetched dynamically at runtime from the PIA manual-connections repository so it is always current; never hardcoded
+- **TLS:** the port 1337 registration API uses HTTPS with PIA's own CA certificate and `ServerName` set to the server's CN from the server list
+- **Android DNS:** Android does not run a local DNS resolver, so all HTTP clients and TCP latency probes use a custom dialer that bypasses the system resolver and uses Google DNS (`8.8.8.8`) directly
+- **Android TLS:** Android does not store CA certificates in standard Linux locations; the app loads certificates from all known locations including the Termux-specific path (`/data/data/com.termux/files/usr/etc/tls/cert.pem`) which is hardcoded because the `$PREFIX` environment variable is not reliably inherited by child processes on Android
+- **Line endings:** the output config file always uses Unix line endings (`\n`) regardless of platform
 - **Timeouts:** 10-second timeout on all HTTP clients; 2-second timeout on TCP latency probes
+- **Cross-compilation:** both binaries are built from Windows using `CGO_ENABLED=0` via `build.bat`
 
 ## Contributing
 
