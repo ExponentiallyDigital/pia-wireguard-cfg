@@ -70,7 +70,7 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-const programVersion = "1.0.8"
+const programVersion = "1.0.9"
 
 type wgServer struct {
     IP string `json:"ip"`
@@ -215,6 +215,12 @@ func main() {
 	}
 
     // Probe latency
+    type probeResult struct {
+        server  wgServer
+        latency time.Duration
+        failed  bool
+    }
+    var probeResults []probeResult
     minLatency := time.Duration(1<<63 - 1)
     var bestServer *wgServer
     for i, s := range melRegion.Servers.WG {
@@ -227,11 +233,9 @@ func main() {
                 minLatency = latency
                 bestServer = &melRegion.Servers.WG[i]
             }
-            if verbose {
-                fmt.Fprintf(os.Stderr, "Server %s (%s) latency: %v\n", s.IP, s.CN, latency)
-            }
-        } else if verbose {
-            fmt.Fprintf(os.Stderr, "Server %s (%s) probe failed: %v\n", s.IP, s.CN, err)
+            probeResults = append(probeResults, probeResult{server: s, latency: latency, failed: false})
+        } else {
+            probeResults = append(probeResults, probeResult{server: s, latency: 0, failed: true})
         }
     }
     if bestServer == nil {
@@ -240,9 +244,31 @@ func main() {
     }
 
     if verbose {
-        fmt.Fprintf(os.Stderr, "Selected server: %s (%s) latency: %v\n", bestServer.IP, bestServer.CN, minLatency)
+        sort.Slice(probeResults, func(i, j int) bool {
+            if probeResults[i].failed {
+                return false
+            }
+            if probeResults[j].failed {
+                return true
+            }
+            return probeResults[i].latency < probeResults[j].latency
+        })
+        fmt.Fprintf(os.Stderr, "\n%-20s  %-45s  %s\n", "IP", "CN", "Latency")
+        fmt.Fprintf(os.Stderr, "%s\n", strings.Repeat("-", 75))
+        for _, r := range probeResults {
+            if r.failed {
+                fmt.Fprintf(os.Stderr, "%-20s  %-45s  %s\n", r.server.IP, r.server.CN, "probe failed")
+            } else {
+                marker := ""
+                if r.server.IP == bestServer.IP {
+                    marker = " <-- selected"
+                }
+                fmt.Fprintf(os.Stderr, "%-20s  %-45s  %v%s\n", r.server.IP, r.server.CN, r.latency, marker)
+            }
+        }
+        fmt.Fprintf(os.Stderr, "\n")
     }
-
+    
     // Authenticate to get token
     token, err := getPIAToken(ctx, username, password)
     if err != nil {

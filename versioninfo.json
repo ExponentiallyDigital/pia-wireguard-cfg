@@ -3,13 +3,13 @@
                           "FileVersion":  {
                                               "Major":  1,
                                               "Minor":  0,
-                                              "Patch":  8,
+                                              "Patch":  9,
                                               "Build":  0
                                           },
                           "ProductVersion":  {
                                                  "Major":  1,
                                                  "Minor":  0,
-                                                 "Patch":  8,
+                                                 "Patch":  9,
                                                  "Build":  0
                                              },
                           "FileFlagsMask":  "3f",
@@ -22,14 +22,14 @@
                            "Comments":  "https://www.exponentiallydigital.com",
                            "CompanyName":  "Exponentially Digital",
                            "FileDescription":  "pia-wireguard-cfg",
-                           "FileVersion":  "1.0.8.0",
+                           "FileVersion":  "1.0.9.0",
                            "InternalName":  "pia-wireguard-cfg",
                            "LegalCopyright":  "Copyright (C) 2026 Andrew Newbury",
                            "LegalTrademarks":  "",
                            "OriginalFilename":  "pia-wireguard-cfg.exe",
                            "PrivateBuild":  "",
                            "ProductName":  "PIA wireguard cfg by Exponentially Digital",
-                           "ProductVersion":  "1.0.8.0",
+                           "ProductVersion":  "1.0.9.0",
                            "SpecialBuild":  ""
                        },
     "VarFileInfo":  {
